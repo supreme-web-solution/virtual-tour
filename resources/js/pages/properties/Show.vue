@@ -3,6 +3,7 @@ import CommentsPanel from '@/components/CommentsPanel.vue';
 import { Head, Link, setLayoutProps, useForm } from '@inertiajs/vue3';
 import {
     Bath,
+    ChevronRight,
     BedDouble,
     Copy,
     Images,
@@ -308,7 +309,7 @@ function openAsset(asset: MediaAsset): void {
                         <li v-for="tour in tours" :key="tour.id">
                             <Link
                                 :href="tourRoutes.edit(tour.id)"
-                                class="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-accent/50"
+                                class="group flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-accent/50"
                             >
                                 <Orbit
                                     class="size-4 shrink-0 text-muted-foreground"
@@ -324,6 +325,9 @@ function openAsset(asset: MediaAsset): void {
                                             : 'Draft'
                                     }}</span
                                 >
+                                <ChevronRight
+                                    class="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground"
+                                />
                             </Link>
                         </li>
                     </ul>

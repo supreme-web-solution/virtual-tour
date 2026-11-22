@@ -132,7 +132,7 @@ test('the public tour exposes branding, audio and the contact form without priva
     $logo = assetOfType($this->workspace, AssetType::Logo);
     $track = assetOfType($this->workspace, AssetType::Audio);
     $this->tour->update([
-        'branding_settings' => ['logo_asset_id' => $logo->ulid, 'contact' => ['email' => 'agent@example.com']],
+        'branding_settings' => ['logo_asset_id' => $logo->ulid, 'contact' => ['enabled' => true, 'email' => 'agent@example.com']],
         'audio_settings' => ['background_asset_id' => $track->ulid],
         'lead_settings' => ['enabled' => true],
         'map_settings' => ['enabled' => true],
@@ -142,10 +142,26 @@ test('the public tour exposes branding, audio and the contact form without priva
         ->assertInertia(fn (Assert $page) => $page
             ->where('tour.branding.logo_url', "https://storage.test/w400/{$logo->cloudinary_public_id}.jpg")
             ->where('tour.branding.contact.email', 'agent@example.com')
+            ->missing('tour.branding.contact.enabled')
             ->where('tour.audio.url', $track->secure_url)
             ->where('tour.lead.submit_url', route('tours.public.leads', ['publicId' => $this->tour->public_id]))
             ->missing('tour.lead.notify')
             ->where('tour.map', null));
+});
+
+test('contact details are shown to visitors only while the toggle is on', function () {
+    $this->tour->update(['branding_settings' => ['contact' => ['enabled' => false, 'email' => 'agent@example.com']]]);
+
+    $this->get(route('tours.public', ['publicId' => $this->tour->public_id]))
+        ->assertInertia(fn (Assert $page) => $page->where('tour.branding.contact', null));
+
+    $this->actingAs($this->owner)->patchJson(route('tours.update', $this->tour), ['branding' => ['contact' => ['enabled' => true]]])->assertOk();
+
+    $this->get(route('tours.public', ['publicId' => $this->tour->public_id]))
+        ->assertInertia(fn (Assert $page) => $page->where('tour.branding.contact.email', 'agent@example.com'));
+
+    $this->actingAs($this->owner)->patchJson(route('tours.update', $this->tour), ['branding' => ['contact' => ['enabled' => 'maybe']]])
+        ->assertJsonValidationErrors('branding.contact.enabled');
 });
 
 test('the map appears only when enabled and the property has coordinates', function () {

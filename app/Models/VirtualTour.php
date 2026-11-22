@@ -61,6 +61,7 @@ class VirtualTour extends Model
         'start_scene_id' => null,
         'show_scene_gallery' => true,
         'show_prev_next' => true,
+        'show_scene_label' => true,
         'auto_rotate' => false,
         'auto_rotate_speed' => 'normal',
         'transition' => 'fade',
@@ -76,7 +77,7 @@ class VirtualTour extends Model
         'accent_color' => '#10b981',
         'show_platform_branding' => true,
         'intro' => ['enabled' => false, 'title' => null, 'text' => null, 'button_label' => 'Start tour'],
-        'contact' => ['name' => null, 'email' => null, 'phone' => null, 'website' => null],
+        'contact' => ['enabled' => false, 'name' => null, 'email' => null, 'phone' => null, 'website' => null],
     ];
 
     /**

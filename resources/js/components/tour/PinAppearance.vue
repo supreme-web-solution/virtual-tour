@@ -76,7 +76,9 @@ function update<K extends keyof HotspotSettings>(
 </script>
 
 <template>
-    <section class="grid min-w-0 gap-4 rounded-xl border bg-muted/20 p-3.5">
+    <section
+        class="grid min-w-0 gap-4 rounded-xl border bg-card p-3.5 shadow-xs"
+    >
         <div>
             <p class="text-sm font-medium">Pin appearance</p>
             <p class="text-xs text-muted-foreground">

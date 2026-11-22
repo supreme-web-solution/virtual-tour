@@ -30,27 +30,55 @@ const canRemoveBadge = computed(
 );
 
 // Text fields are edited locally and saved on blur.
-const contactPerson = ref('');
-const contactWebsite = ref('');
-const text = reactive({
-    introTitle: '',
-    introText: '',
-    introButton: '',
-
+const introDraft = reactive({ title: '', text: '', button: '' });
+const fields = reactive({
+    contactPerson: '',
+    contactWebsite: '',
     contactEmail: '',
     contactPhone: '',
 });
 
+const contactFields = [
+    {
+        key: 'name',
+        model: 'contactPerson',
+        label: 'Name or agency',
+        type: 'text',
+        max: 120,
+    },
+    {
+        key: 'email',
+        model: 'contactEmail',
+        label: 'Email',
+        type: 'email',
+        max: 255,
+    },
+    {
+        key: 'phone',
+        model: 'contactPhone',
+        label: 'Phone',
+        type: 'tel',
+        max: 40,
+    },
+    {
+        key: 'website',
+        model: 'contactWebsite',
+        label: 'Website',
+        type: 'url',
+        max: 255,
+    },
+] as const;
+
 watch(
     () => props.tour.branding,
     (branding) => {
-        text.introTitle = branding.intro.title ?? '';
-        text.introText = branding.intro.text ?? '';
-        text.introButton = branding.intro.button_label ?? '';
-        contactPerson.value = branding.contact.name ?? '';
-        text.contactEmail = branding.contact.email ?? '';
-        text.contactPhone = branding.contact.phone ?? '';
-        contactWebsite.value = branding.contact.website ?? '';
+        introDraft.title = branding.intro.title ?? '';
+        introDraft.text = branding.intro.text ?? '';
+        introDraft.button = branding.intro.button_label ?? '';
+        fields.contactPerson = branding.contact.name ?? '';
+        fields.contactEmail = branding.contact.email ?? '';
+        fields.contactPhone = branding.contact.phone ?? '';
+        fields.contactWebsite = branding.contact.website ?? '';
     },
     { immediate: true },
 );
@@ -122,8 +150,13 @@ function saveText(
 </script>
 
 <template>
-    <fieldset :disabled="!canEdit" class="space-y-6 p-3">
-        <PanelSection title="Logo & colours" :icon="Palette" tone="violet">
+    <fieldset :disabled="!canEdit" class="min-w-0 space-y-6 p-3">
+        <PanelSection
+            title="Logo & colours"
+            :icon="Palette"
+            tone="violet"
+            help="Your logo and accent colour, shown on the tour's buttons and intro screen."
+        >
             <div class="grid gap-2">
                 <Label for="brand-logo">Logo</Label>
                 <div class="flex items-center gap-3">
@@ -230,7 +263,60 @@ function saveText(
             /></label>
         </PanelSection>
 
-        <PanelSection title="Intro screen" :icon="PanelTop" tone="sky">
+        <PanelSection
+            title="Contact details"
+            :icon="Contact"
+            tone="emerald"
+            help="Name, phone and email shown on the tour so visitors can reach you."
+        >
+            <label
+                class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                ><span>Show contact details in the tour</span
+                ><Switch
+                    :model-value="tour.branding.contact.enabled"
+                    @update:model-value="
+                        save({ contact: { enabled: $event === true } })
+                    "
+            /></label>
+            <div v-if="tour.branding.contact.enabled" class="grid gap-4">
+                <p class="text-xs text-muted-foreground">
+                    Shown to visitors in the tour's info panel.
+                </p>
+                <div
+                    v-for="field in contactFields"
+                    :key="field.key"
+                    class="grid gap-2"
+                >
+                    <Label :for="'contact-' + field.key">{{
+                        field.label
+                    }}</Label>
+                    <Input
+                        :id="'contact-' + field.key"
+                        :model-value="fields[field.model]"
+                        :type="field.type"
+                        :maxlength="field.max"
+                        @update:model-value="
+                            fields[field.model] = String($event ?? '')
+                        "
+                        @blur="
+                            saveText(
+                                'contact',
+                                field.key,
+                                fields[field.model],
+                                tour.branding.contact[field.key],
+                            )
+                        "
+                    />
+                </div>
+            </div>
+        </PanelSection>
+
+        <PanelSection
+            title="Intro screen"
+            :icon="PanelTop"
+            tone="sky"
+            help="The cover visitors see before the tour starts: a picture, the title and a start button."
+        >
             <label
                 class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
                 ><span>Show a welcome screen before the tour</span
@@ -240,19 +326,22 @@ function saveText(
                         save({ intro: { enabled: $event === true } })
                     "
             /></label>
-            <template v-if="tour.branding.intro.enabled">
+            <div v-if="tour.branding.intro.enabled" class="grid gap-4">
                 <div class="grid gap-2">
                     <Label for="intro-title">Title</Label>
                     <Input
                         id="intro-title"
-                        v-model="text.introTitle"
+                        :model-value="introDraft.title"
+                        @update:model-value="
+                            introDraft.title = String($event ?? '')
+                        "
                         maxlength="120"
                         :placeholder="tour.title"
                         @blur="
                             saveText(
                                 'intro',
                                 'title',
-                                text.introTitle,
+                                introDraft.title,
                                 tour.branding.intro.title,
                             )
                         "
@@ -262,14 +351,17 @@ function saveText(
                     <Label for="intro-text">Message</Label>
                     <Textarea
                         id="intro-text"
-                        v-model="text.introText"
+                        :model-value="introDraft.text"
+                        @update:model-value="
+                            introDraft.text = String($event ?? '')
+                        "
                         rows="3"
                         maxlength="1000"
                         @blur="
                             saveText(
                                 'intro',
                                 'text',
-                                text.introText,
+                                introDraft.text,
                                 tour.branding.intro.text,
                             )
                         "
@@ -279,92 +371,21 @@ function saveText(
                     <Label for="intro-button">Button label</Label>
                     <Input
                         id="intro-button"
-                        v-model="text.introButton"
+                        :model-value="introDraft.button"
+                        @update:model-value="
+                            introDraft.button = String($event ?? '')
+                        "
                         maxlength="40"
                         @blur="
                             saveText(
                                 'intro',
                                 'button_label',
-                                text.introButton,
+                                introDraft.button,
                                 tour.branding.intro.button_label,
                             )
                         "
                     />
                 </div>
-            </template>
-        </PanelSection>
-
-        <PanelSection title="Contact details" :icon="Contact" tone="emerald">
-            <p class="text-xs text-muted-foreground">
-                Shown to visitors in the tour's info panel.
-            </p>
-            <div class="grid gap-2">
-                <Label for="contact-person">Name or agency</Label>
-                <Input
-                    id="contact-person"
-                    v-model="contactPerson"
-                    maxlength="120"
-                    @blur="
-                        saveText(
-                            'contact',
-                            'name',
-                            contactPerson,
-                            tour.branding.contact.name,
-                        )
-                    "
-                />
-            </div>
-            <div class="grid gap-2">
-                <Label for="contact-email">Email</Label>
-                <Input
-                    id="contact-email"
-                    v-model="text.contactEmail"
-                    type="email"
-                    maxlength="255"
-                    @blur="
-                        saveText(
-                            'contact',
-                            'email',
-                            text.contactEmail,
-                            tour.branding.contact.email,
-                        )
-                    "
-                />
-            </div>
-            <div class="grid gap-2">
-                <Label for="contact-phone">Phone</Label>
-                <Input
-                    id="contact-phone"
-                    v-model="text.contactPhone"
-                    type="tel"
-                    maxlength="40"
-                    @blur="
-                        saveText(
-                            'contact',
-                            'phone',
-                            text.contactPhone,
-                            tour.branding.contact.phone,
-                        )
-                    "
-                />
-            </div>
-            <div class="grid gap-2">
-                <Label for="contact-website">Website</Label>
-                <Input
-                    id="contact-website"
-                    v-model="contactWebsite"
-                    type="url"
-                    :placeholder="'https://'"
-                    maxlength="255"
-                    @blur="
-                        saveText(
-                            'contact',
-                            'website',
-                            contactWebsite,
-                            tour.branding.contact.website,
-                        )
-                    "
-                />
             </div>
         </PanelSection>
     </fieldset>

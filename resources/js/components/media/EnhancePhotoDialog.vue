@@ -5,6 +5,7 @@ import { Check, Loader2, Sparkles, TriangleAlert } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import BeforeAfter from '@/components/media/BeforeAfter.vue';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Dialog,
     DialogContent,
@@ -383,9 +384,20 @@ function again(): void {
             </p>
             <div
                 v-else
-                class="flex items-center gap-2 py-10 text-sm text-muted-foreground"
+                class="space-y-4 py-2"
+                role="status"
+                aria-label="Loading"
             >
-                <Loader2 class="size-4 animate-spin" /> Loading…
+                <Skeleton class="aspect-video w-full rounded-xl" />
+                <div class="grid grid-cols-3 gap-2">
+                    <Skeleton class="h-9 rounded-lg" />
+                    <Skeleton class="h-9 rounded-lg" />
+                    <Skeleton class="h-9 rounded-lg" />
+                </div>
+                <div class="flex justify-end gap-2">
+                    <Skeleton class="h-9 w-20 rounded-lg" />
+                    <Skeleton class="h-9 w-28 rounded-lg" />
+                </div>
             </div>
         </DialogContent>
     </Dialog>

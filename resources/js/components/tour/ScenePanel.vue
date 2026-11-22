@@ -4,10 +4,14 @@ import {
     Crosshair,
     ExternalLink,
     Eye,
+    Image as ImageIcon,
     Info,
+    Loader2,
+    MapPin,
     Navigation,
     Play,
     Plus,
+    Volume2,
 } from '@lucide/vue';
 import { ref, watch } from 'vue';
 import { Slider } from '@/components/ui/slider';
@@ -17,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import NativeSelect from '@/components/NativeSelect.vue';
+import PanelSection from '@/components/tour/PanelSection.vue';
 import type { HotspotType, LibraryAsset, TourScene } from '@/types';
 
 const props = defineProps<{
@@ -25,6 +30,7 @@ const props = defineProps<{
     audioLibrary: LibraryAsset[];
     canEdit: boolean;
     placing: boolean;
+    capturingView?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -96,41 +102,48 @@ function hotspotLabel(hotspot: TourScene['hotspots'][number]): string {
 </script>
 
 <template>
-    <div class="space-y-6 p-3">
-        <fieldset :disabled="!canEdit" class="space-y-4">
-            <div class="grid gap-2">
-                <Label for="scene-title">Scene name</Label>
-                <Input
-                    id="scene-title"
-                    v-model="title"
-                    maxlength="120"
-                    @blur="saveTitle"
-                    @keydown.enter.prevent="
-                        ($event.target as HTMLInputElement).blur()
-                    "
-                />
-            </div>
-            <div class="grid gap-2">
-                <Label for="scene-description">Description</Label>
-                <Textarea
-                    id="scene-description"
-                    v-model="description"
-                    rows="3"
-                    maxlength="5000"
-                    placeholder="Shown to visitors in the scene list."
-                    @blur="saveDescription"
-                />
-            </div>
-            <label
-                class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-                ><span>Visible to visitors</span
-                ><Switch
-                    :model-value="scene.is_visible"
-                    @update:model-value="
-                        emit('update', { is_visible: $event === true })
-                    "
-            /></label>
-        </fieldset>
+    <div class="space-y-4 p-3">
+        <PanelSection
+            title="Scene"
+            :icon="ImageIcon"
+            tone="sky"
+            help="The name and description visitors see in the scene list. Turn visibility off to hide the scene from visitors."
+        >
+            <fieldset :disabled="!canEdit" class="min-w-0 space-y-4">
+                <div class="grid gap-2">
+                    <Label for="scene-title">Scene name</Label>
+                    <Input
+                        id="scene-title"
+                        v-model="title"
+                        maxlength="120"
+                        @blur="saveTitle"
+                        @keydown.enter.prevent="
+                            ($event.target as HTMLInputElement).blur()
+                        "
+                    />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="scene-description">Description</Label>
+                    <Textarea
+                        id="scene-description"
+                        v-model="description"
+                        rows="3"
+                        maxlength="5000"
+                        placeholder="Shown to visitors in the scene list."
+                        @blur="saveDescription"
+                    />
+                </div>
+                <label
+                    class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                    ><span>Visible to visitors</span
+                    ><Switch
+                        :model-value="scene.is_visible"
+                        @update:model-value="
+                            emit('update', { is_visible: $event === true })
+                        "
+                /></label>
+            </fieldset>
+        </PanelSection>
 
         <div
             v-if="!scene.media.is_equirectangular"
@@ -142,8 +155,12 @@ function hotspotLabel(hotspot: TourScene['hotspots'][number]): string {
             convert the photo to 360° with AI, for a full sphere.
         </div>
 
-        <section class="space-y-2">
-            <h3 class="text-sm font-medium">Starting view</h3>
+        <PanelSection
+            title="Starting view"
+            :icon="Crosshair"
+            tone="violet"
+            help="Where visitors look when they arrive in this scene. Turn the view to the spot you want, then click Use current view."
+        >
             <p class="text-xs text-muted-foreground">
                 Visitors arriving in this scene first look this way. Currently
                 {{ scene.initial_view.yaw.toFixed(0) }}° across,
@@ -155,84 +172,95 @@ function hotspotLabel(hotspot: TourScene['hotspots'][number]): string {
                     v-if="canEdit"
                     size="sm"
                     variant="outline"
+                    :disabled="capturingView"
                     @click="emit('captureView')"
                 >
-                    <Crosshair /> Use current view
+                    <Loader2 v-if="capturingView" class="animate-spin" />
+                    <Crosshair v-else />
+                    {{ capturingView ? 'Saving…' : 'Use current view' }}
                 </Button>
                 <Button size="sm" variant="ghost" @click="emit('previewView')">
                     <Eye /> Show
                 </Button>
             </div>
-        </section>
+        </PanelSection>
 
-        <fieldset :disabled="!canEdit" class="space-y-2">
-            <h3 class="text-sm font-medium">Scene audio</h3>
-            <NativeSelect
-                :model-value="scene.audio.asset_id ?? ''"
-                :options="
-                    audioLibrary.map((track) => ({
-                        value: track.id,
-                        label: track.name ?? 'Audio',
-                    }))
-                "
-                placeholder="None (use tour music)"
-                aria-label="Scene audio"
-                @update:model-value="
-                    emit('update', {
-                        audio_settings: { asset_id: $event || null },
-                    })
-                "
-            />
-            <template v-if="scene.audio.asset_id">
-                <div class="grid gap-2 text-sm">
-                    <span>Volume {{ scene.audio.volume }}%</span
-                    ><Slider
-                        :model-value="scene.audio.volume"
-                        :min="0"
-                        :max="100"
-                        :step="5"
-                        @commit="
-                            emit('update', {
-                                audio_settings: { volume: $event },
-                            })
-                        "
-                    />
-                </div>
-                <label
-                    class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-                    ><span>Pause tour music in this scene</span
-                    ><Switch
-                        :model-value="scene.audio.pause_background"
-                        @update:model-value="
-                            emit('update', {
-                                audio_settings: {
-                                    pause_background: $event === true,
-                                },
-                            })
-                        "
-                /></label>
-                <label
-                    class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-                    ><span>Loop</span
-                    ><Switch
-                        :model-value="scene.audio.loop"
-                        @update:model-value="
-                            emit('update', {
-                                audio_settings: { loop: $event === true },
-                            })
-                        "
-                /></label>
-            </template>
-        </fieldset>
+        <PanelSection
+            title="Scene audio"
+            :icon="Volume2"
+            tone="rose"
+            help="A sound that plays only in this scene. Leave it empty to keep the tour's background music."
+        >
+            <fieldset :disabled="!canEdit" class="min-w-0 space-y-2">
+                <NativeSelect
+                    :model-value="scene.audio.asset_id ?? ''"
+                    :options="
+                        audioLibrary.map((track) => ({
+                            value: track.id,
+                            label: track.name ?? 'Audio',
+                        }))
+                    "
+                    placeholder="None (use tour music)"
+                    aria-label="Scene audio"
+                    @update:model-value="
+                        emit('update', {
+                            audio_settings: { asset_id: $event || null },
+                        })
+                    "
+                />
+                <template v-if="scene.audio.asset_id">
+                    <div class="grid gap-2 text-sm">
+                        <span>Volume {{ scene.audio.volume }}%</span
+                        ><Slider
+                            :model-value="scene.audio.volume"
+                            :min="0"
+                            :max="100"
+                            :step="5"
+                            @commit="
+                                emit('update', {
+                                    audio_settings: { volume: $event },
+                                })
+                            "
+                        />
+                    </div>
+                    <label
+                        class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                        ><span>Pause tour music in this scene</span
+                        ><Switch
+                            :model-value="scene.audio.pause_background"
+                            @update:model-value="
+                                emit('update', {
+                                    audio_settings: {
+                                        pause_background: $event === true,
+                                    },
+                                })
+                            "
+                    /></label>
+                    <label
+                        class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                        ><span>Loop</span
+                        ><Switch
+                            :model-value="scene.audio.loop"
+                            @update:model-value="
+                                emit('update', {
+                                    audio_settings: { loop: $event === true },
+                                })
+                            "
+                    /></label>
+                </template>
+            </fieldset>
+        </PanelSection>
 
-        <section class="space-y-2">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium">
-                    Hotspots
-                    <span class="font-normal text-muted-foreground">{{
-                        scene.hotspots.length
-                    }}</span>
-                </h3>
+        <PanelSection
+            title="Hotspots"
+            :icon="MapPin"
+            tone="emerald"
+            help="Clickable pins on the image that link to another scene, show information, open a link or play media."
+        >
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-sm text-muted-foreground"
+                    >{{ scene.hotspots.length }} in this scene</span
+                >
                 <Button
                     v-if="canEdit"
                     size="sm"
@@ -264,6 +292,6 @@ function hotspotLabel(hotspot: TourScene['hotspots'][number]): string {
             <p v-else class="text-xs text-muted-foreground">
                 Add hotspots to link scenes together or point out features.
             </p>
-        </section>
+        </PanelSection>
     </div>
 </template>

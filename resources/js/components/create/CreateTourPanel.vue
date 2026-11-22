@@ -20,6 +20,7 @@ import NativeSelect from '@/components/NativeSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getJson, HttpError, postJson } from '@/lib/http';
@@ -583,9 +584,19 @@ const placeholders = computed(() =>
             </div>
             <div
                 v-else-if="!options"
-                class="flex items-center gap-2 py-8 text-sm text-muted-foreground"
+                class="space-y-4"
+                role="status"
+                aria-label="Loading"
             >
-                <Loader2 class="size-4 animate-spin" /> Loading…
+                <div class="flex items-center justify-between">
+                    <Skeleton class="h-3 w-36" />
+                    <Skeleton class="h-3 w-10" />
+                </div>
+                <Skeleton class="h-28 w-full rounded-xl" />
+                <div class="flex items-center justify-between gap-3">
+                    <Skeleton class="h-3 w-28" />
+                    <Skeleton class="h-9 w-32 rounded-lg" />
+                </div>
             </div>
 
             <template v-else>

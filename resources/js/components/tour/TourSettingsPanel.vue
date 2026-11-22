@@ -86,7 +86,7 @@ function setViewerSetting<K extends keyof ViewerSettings>(
 </script>
 
 <template>
-    <fieldset :disabled="!canEdit" class="space-y-6 p-3">
+    <fieldset :disabled="!canEdit" class="min-w-0 space-y-6 p-3">
         <div class="grid gap-2">
             <Label for="tour-description">Description</Label>
             <Textarea
@@ -127,7 +127,12 @@ function setViewerSetting<K extends keyof ViewerSettings>(
             </p>
         </div>
 
-        <PanelSection title="Viewer" :icon="Eye" tone="sky">
+        <PanelSection
+            title="Viewer"
+            :icon="Eye"
+            tone="sky"
+            help="How the tour behaves for visitors: auto-rotate, controls and the starting view."
+        >
             <label
                 class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
                 ><span>Show scene thumbnails</span
@@ -144,6 +149,15 @@ function setViewerSetting<K extends keyof ViewerSettings>(
                     :model-value="tour.viewer_settings.show_prev_next"
                     @update:model-value="
                         setViewerSetting('show_prev_next', $event === true)
+                    "
+            /></label>
+            <label
+                class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                ><span>Show scene name and count</span
+                ><Switch
+                    :model-value="tour.viewer_settings.show_scene_label"
+                    @update:model-value="
+                        setViewerSetting('show_scene_label', $event === true)
                     "
             /></label>
             <label
@@ -238,6 +252,7 @@ function setViewerSetting<K extends keyof ViewerSettings>(
             :icon="Code"
             tone="violet"
             description="Where this tour may be embedded"
+            help="Limit which websites may show this tour inside their own pages."
         >
             <div class="grid gap-2">
                 <Label for="tour-domains">Allowed embed domains</Label>

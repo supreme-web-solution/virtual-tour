@@ -117,6 +117,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         :icon="Globe"
         tone="sky"
         description="Publish your own 360° photos to Google Maps."
+        help="Sends your uploaded 360° photos to Google Street View so they appear on Google Maps. Needs a connected Google account and photos with a map location."
     >
         <p v-if="!state.configured" class="text-xs text-muted-foreground">
             Street View is not set up on this server yet. An administrator must

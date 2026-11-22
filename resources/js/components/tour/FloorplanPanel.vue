@@ -173,6 +173,7 @@ function saveTitle(): void {
             :icon="LayoutPanelTop"
             tone="sky"
             description="The map visitors use to jump between rooms"
+            help="Upload a drawing of the property's layout. Visitors see it in the tour and tap a room to jump there."
         >
             <div class="flex items-center gap-2">
                 <NativeSelect
@@ -291,6 +292,7 @@ function saveTitle(): void {
             :icon="MapPin"
             tone="emerald"
             description="Click the plan to drop the current scene"
+            help="Select a scene, then click its spot on the floor plan. Each pin becomes a jump button for visitors."
         >
             <div
                 v-if="canEdit && currentScene"

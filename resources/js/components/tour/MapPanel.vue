@@ -3,8 +3,9 @@ import { Building2, Crosshair, MapPin, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import type { MapPinData } from '@/components/tour/TileMap.vue';
 import TileMap from '@/components/tour/TileMap.vue';
+import PanelSection from '@/components/tour/PanelSection.vue';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import type { TourEditor } from '@/composables/useTourEditor';
 
 /**
@@ -119,125 +120,136 @@ function onPinClick(id: string): void {
 
 <template>
     <div class="space-y-4 p-3">
-        <div>
-            <h3 class="text-sm font-medium">Scene map</h3>
-            <p class="text-xs text-muted-foreground">
-                Pin each scene where it is. Visitors click a pin to go to that
-                scene.
-            </p>
-        </div>
-
-        <label class="flex items-start gap-2 text-sm">
-            <Checkbox
-                class="mt-0.5"
-                :model-value="tour.map_settings.enabled"
-                :disabled="!canEdit || !tour.map_settings.has_coordinates"
-                @update:model-value="
-                    emit('update', {
-                        map_settings: { enabled: $event === true },
-                    })
-                "
-            />
-            <span>
-                Show the map in the published tour
-                <span
-                    v-if="!tour.map_settings.has_coordinates"
-                    class="block text-xs text-muted-foreground"
-                >
-                    Place at least one pin to turn this on.
-                </span>
-            </span>
-        </label>
-
-        <div class="relative aspect-[4/3] overflow-hidden rounded-lg border">
-            <TileMap
-                :center="start.center"
-                :zoom="start.zoom"
-                :fit="start.fit"
-                :pins="pins"
-                :placing="placingSceneId !== null"
-                :draggable-pins="canEdit"
-                @map-click="place"
-                @pin-move="move"
-                @pin-click="onPinClick"
-            />
-            <div
-                v-if="placingTitle"
-                class="pointer-events-none absolute top-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-xs text-white shadow"
-            >
-                Click the map to place “{{ placingTitle }}”
-            </div>
-        </div>
-
-        <p
-            v-if="canEdit && pinned.length"
-            class="text-xs text-muted-foreground"
+        <PanelSection
+            title="Map"
+            :icon="MapPin"
+            tone="emerald"
+            help="Shows visitors where the property is on an OpenStreetMap map, with a pin per scene. Visitors tap a pin to jump to that scene. No API key needed."
         >
-            Drag a pin to move it.
-        </p>
-
-        <ul class="divide-y rounded-lg border">
-            <li
-                v-for="scene in tour.scenes"
-                :key="scene.id"
-                class="flex items-center gap-2 p-2 text-sm"
-            >
-                <span
-                    class="flex size-6 shrink-0 items-center justify-center rounded-full"
-                    :class="
-                        scene.location
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground'
-                    "
-                >
-                    <MapPin class="size-3.5" />
-                </span>
-                <button
-                    type="button"
-                    class="min-w-0 flex-1 truncate text-left hover:underline"
-                    :class="{ 'font-medium': scene.id === currentSceneId }"
-                    @click="editor.selectScene(scene.id)"
-                >
-                    {{ scene.title }}
-                </button>
-                <template v-if="canEdit">
-                    <Button
-                        v-if="propertyLocation && !scene.location"
-                        variant="ghost"
-                        size="icon"
-                        class="size-7"
-                        title="Use the property location"
-                        aria-label="Use the property location"
-                        @click="usePropertyLocation(scene.id)"
+            <label
+                class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
+                ><span
+                    >Show the map in the published tour
+                    <span
+                        v-if="!tour.map_settings.has_coordinates"
+                        class="block text-xs text-muted-foreground"
                     >
-                        <Building2 />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        class="h-7 px-2 text-xs"
-                        :class="{
-                            'border-primary': placingSceneId === scene.id,
-                        }"
-                        @click="
-                            placingSceneId =
-                                placingSceneId === scene.id ? null : scene.id
+                        Place at least one pin to turn this on.
+                    </span></span
+                ><Switch
+                    :model-value="tour.map_settings.enabled"
+                    :disabled="!canEdit || !tour.map_settings.has_coordinates"
+                    @update:model-value="
+                        emit('update', {
+                            map_settings: { enabled: $event === true },
+                        })
+                    "
+            /></label>
+        </PanelSection>
+
+        <PanelSection
+            title="Scene map"
+            :icon="Crosshair"
+            tone="sky"
+            description="Pin each scene where it is"
+        >
+            <div
+                class="relative aspect-[4/3] overflow-hidden rounded-lg border"
+            >
+                <TileMap
+                    :center="start.center"
+                    :zoom="start.zoom"
+                    :fit="start.fit"
+                    :pins="pins"
+                    :placing="placingSceneId !== null"
+                    :draggable-pins="canEdit"
+                    @map-click="place"
+                    @pin-move="move"
+                    @pin-click="onPinClick"
+                />
+                <div
+                    v-if="placingTitle"
+                    class="pointer-events-none absolute top-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-xs text-white shadow"
+                >
+                    Click the map to place “{{ placingTitle }}”
+                </div>
+            </div>
+
+            <p
+                v-if="canEdit && pinned.length"
+                class="text-xs text-muted-foreground"
+            >
+                Drag a pin to move it.
+            </p>
+        </PanelSection>
+
+        <PanelSection title="Scenes" :icon="MapPin" tone="emerald">
+            <ul class="divide-y rounded-lg border bg-card">
+                <li
+                    v-for="scene in tour.scenes"
+                    :key="scene.id"
+                    class="flex items-center gap-2 p-2 text-sm"
+                >
+                    <span
+                        class="flex size-6 shrink-0 items-center justify-center rounded-full"
+                        :class="
+                            scene.location
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
                         "
                     >
-                        <Crosshair /> {{ scene.location ? 'Move' : 'Place' }}
-                    </Button>
-                    <Button
-                        v-if="scene.location"
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-destructive hover:text-destructive"
-                        :aria-label="`Remove the pin for ${scene.title}`"
-                        @click="remove(scene.id)"
+                        <MapPin class="size-3.5" />
+                    </span>
+                    <button
+                        type="button"
+                        class="min-w-0 flex-1 truncate text-left hover:underline"
+                        :class="{ 'font-medium': scene.id === currentSceneId }"
+                        @click="editor.selectScene(scene.id)"
                     >
-                        <Trash2 />
-                    </Button>
-                </template>
-            </li>
-        </ul>
+                        {{ scene.title }}
+                    </button>
+                    <template v-if="canEdit">
+                        <Button
+                            v-if="propertyLocation && !scene.location"
+                            variant="ghost"
+                            size="icon"
+                            class="size-7"
+                            title="Use the property location"
+                            aria-label="Use the property location"
+                            @click="usePropertyLocation(scene.id)"
+                        >
+                            <Building2 />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            class="h-7 px-2 text-xs"
+                            :class="{
+                                'border-primary': placingSceneId === scene.id,
+                            }"
+                            @click="
+                                placingSceneId =
+                                    placingSceneId === scene.id
+                                        ? null
+                                        : scene.id
+                            "
+                        >
+                            <Crosshair />
+                            {{ scene.location ? 'Move' : 'Place' }}
+                        </Button>
+                        <Button
+                            v-if="scene.location"
+                            variant="ghost"
+                            size="icon"
+                            class="size-7 text-destructive hover:text-destructive"
+                            :aria-label="`Remove the pin for ${scene.title}`"
+                            @click="remove(scene.id)"
+                        >
+                            <Trash2 />
+                        </Button>
+                    </template>
+                </li>
+            </ul>
+        </PanelSection>
     </div>
 </template>

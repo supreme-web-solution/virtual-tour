@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ChartColumn, Loader2, Mail, MapPin, Music, Send } from '@lucide/vue';
+import { ChartColumn, Loader2, Mail, Music, Send } from '@lucide/vue';
 import PanelSection from '@/components/tour/PanelSection.vue';
 import StreetViewSection from '@/components/tour/StreetViewSection.vue';
-import { Link } from '@inertiajs/vue3';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { reactive, ref, watch } from 'vue';
@@ -11,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpError, postJson } from '@/lib/http';
-import properties from '@/routes/properties';
 import { leadTest } from '@/routes/tours';
 import type { EditorTour, LibraryAsset } from '@/types';
 
@@ -76,8 +74,13 @@ function saveLead(key: string, value: string, current: string): void {
 </script>
 
 <template>
-    <fieldset :disabled="!canEdit" class="space-y-6 p-3">
-        <PanelSection title="Background music" :icon="Music" tone="rose">
+    <fieldset :disabled="!canEdit" class="min-w-0 space-y-6 p-3">
+        <PanelSection
+            title="Background music"
+            :icon="Music"
+            tone="rose"
+            help="A soundtrack that plays while visitors look around. They can mute it."
+        >
             <NativeSelect
                 :model-value="tour.audio.background_asset_id ?? ''"
                 :options="
@@ -128,7 +131,12 @@ function saveLead(key: string, value: string, current: string): void {
             </p>
         </PanelSection>
 
-        <PanelSection title="Contact form" :icon="Mail" tone="amber">
+        <PanelSection
+            title="Contact form"
+            :icon="Mail"
+            tone="amber"
+            help="Adds an enquiry form to the tour. Messages are emailed to you and saved under Leads."
+        >
             <label
                 class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
                 ><span>Let visitors send an enquiry</span
@@ -242,43 +250,11 @@ function saveLead(key: string, value: string, current: string): void {
 
         <StreetViewSection :tour-id="tour.id" :can-edit="canEdit" />
 
-        <PanelSection title="Map" :icon="MapPin" tone="emerald">
-            <label
-                class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-                ><span>Show the property location on a map</span
-                ><Switch
-                    :model-value="tour.map_settings.enabled"
-                    :disabled="!tour.map_settings.has_coordinates"
-                    @update:model-value="
-                        emit('update', {
-                            map_settings: { enabled: $event === true },
-                        })
-                    "
-            /></label>
-            <p
-                v-if="!tour.map_settings.has_coordinates"
-                class="text-xs text-muted-foreground"
-            >
-                <template v-if="tour.property">
-                    Add latitude and longitude to
-                    <Link
-                        :href="properties.edit(tour.property.id)"
-                        class="underline underline-offset-4"
-                        >{{ tour.property.name }}</Link
-                    >
-                    to enable the map.
-                </template>
-                <template v-else>
-                    Link the tour to a property with coordinates to enable the
-                    map.
-                </template>
-            </p>
-        </PanelSection>
-
         <PanelSection
             title="Visitor analytics"
             :icon="ChartColumn"
             tone="indigo"
+            help="Counts views and time spent on this tour so you can see what interests people."
         >
             <label
                 class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"

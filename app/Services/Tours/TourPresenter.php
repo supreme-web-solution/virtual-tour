@@ -33,6 +33,9 @@ class TourPresenter
      */
     public const DESKTOP_WIDTH = 8192;
 
+    /** Cloudinary rejects transformed images above 25 megapixels; stay just under. */
+    public const MAX_PIXELS = 24_000_000;
+
     /**
      * Mobile panorama width, safe for virtually all phone GPUs.
      */
@@ -212,7 +215,7 @@ class TourPresenter
             'show_platform_branding' => (bool) $branding['show_platform_branding']
                 || ! $this->entitlements->allows($tour->workspace_id, Entitlement::RemoveBranding),
             'intro' => $branding['intro'],
-            'contact' => array_filter($branding['contact']) === [] ? null : $branding['contact'],
+            'contact' => $this->visitorContact($branding['contact']),
         ];
     }
 
@@ -419,11 +422,44 @@ class TourPresenter
             'width' => $asset->width,
             'height' => $asset->height,
             'is_equirectangular' => (bool) ($asset->metadata['panorama']['is_equirectangular'] ?? false),
-            'panorama_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, self::DESKTOP_WIDTH),
+            'panorama_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, $this->desktopWidth($asset)),
             'panorama_mobile_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, self::MOBILE_WIDTH),
             'panorama_preview_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, self::PREVIEW_WIDTH),
             'tiles' => $this->tiles($asset),
         ];
+    }
+
+    /**
+     * Contact details for visitors: only when switched on and at least one field is filled.
+     *
+     * @param  array<string, mixed>  $contact
+     * @return array<string, string|null>|null
+     */
+    protected function visitorContact(array $contact): ?array
+    {
+        $details = array_diff_key($contact, ['enabled' => true]);
+
+        if (! ($contact['enabled'] ?? false) || array_filter($details) === []) {
+            return null;
+        }
+
+        return $details;
+    }
+
+    /**
+     * The widest full-size version to serve. Cloudinary refuses to resize into
+     * more than about 25 megapixels, so a very large image is capped by its
+     * pixel count rather than by width alone.
+     */
+    protected function desktopWidth(MediaAsset $asset): int
+    {
+        if (! $asset->width || ! $asset->height) {
+            return self::DESKTOP_WIDTH;
+        }
+
+        $byPixels = (int) floor(sqrt(self::MAX_PIXELS * $asset->width / $asset->height));
+
+        return max(1, min(self::DESKTOP_WIDTH, $byPixels));
     }
 
     /**

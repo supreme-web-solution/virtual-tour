@@ -69,6 +69,15 @@ const settings = computed(() => props.tour.viewer_settings);
 const usesTiles = computed(() =>
     tourUsesTiles(scenes.value.map((scene) => scene.media)),
 );
+/**
+ * The scene the name label shows. It changes the moment the new image starts
+ * to blend in, not when the blend ends, so text and picture move together.
+ */
+const labelSceneId = ref<string | null>(null);
+const labelScene = computed(() => sceneById(labelSceneId.value) ?? null);
+const labelIndex = computed(() =>
+    scenes.value.findIndex((scene) => scene.id === labelSceneId.value),
+);
 const currentIndex = computed(() =>
     scenes.value.findIndex((scene) => scene.id === currentSceneId.value),
 );
@@ -80,6 +89,33 @@ const startSceneId = computed(() => {
         : (scenes.value[0]?.id ?? null);
 });
 
+const warmed = new Set<string>();
+
+/**
+ * Fetch the previews of the scenes either side of this one ahead of time, so
+ * the previous/next buttons switch without waiting on the network.
+ */
+function warmNeighbours(sceneId: string): void {
+    const index = scenes.value.findIndex((scene) => scene.id === sceneId);
+
+    if (index === -1 || scenes.value.length < 2) {
+        return;
+    }
+
+    for (const offset of [1, -1, 2]) {
+        const scene =
+            scenes.value[
+                (index + offset + scenes.value.length) % scenes.value.length
+            ];
+        const url = scene.media.panorama_preview_url;
+
+        if (!warmed.has(url)) {
+            warmed.add(url);
+            void fetch(url, { mode: 'cors' }).catch(() => warmed.delete(url));
+        }
+    }
+}
+
 function sceneById(id: string | null): TourScene | undefined {
     return scenes.value.find((scene) => scene.id === id);
 }
@@ -88,6 +124,15 @@ function sceneById(id: string | null): TourScene | undefined {
  * Info and media pins open here, centred over the tour.
  */
 const popover = ref<TourHotspot | null>(null);
+/** The pin whose panel is open keeps a white ring until the panel closes. */
+let popoverPin: Element | null = null;
+
+watch(popover, (open) => {
+    if (open === null) {
+        popoverPin?.classList.remove('is-active');
+        popoverPin = null;
+    }
+});
 
 const popoverHtml = computed(() => {
     const hotspot = popover.value;
@@ -139,7 +184,7 @@ function toNode(scene: TourScene): VirtualTourNode {
         panorama,
         panoData: flatPhotoPanoData(scene.media),
         name: scene.title,
-        caption: scene.title,
+        caption: '',
         thumbnail: scene.media.thumbnail_url ?? undefined,
         links,
         markers,
@@ -340,6 +385,8 @@ onMounted(() => {
         container: container.value,
         ...(usesTiles.value ? { adapter: EquirectangularTilesAdapter } : {}),
         navbar: ['zoom', 'move', 'caption', 'fullscreen'],
+        // No "Loading…" text in the caption bar while the next scene arrives.
+        lang: { loading: '' },
         defaultYaw: toRadians(start.initial_view).yaw,
         defaultPitch: toRadians(start.initial_view).pitch,
         defaultZoomLvl: start.initial_view.zoom,
@@ -357,9 +404,10 @@ onMounted(() => {
                     const scene = sceneById(toNode.id);
 
                     return {
-                        showLoader: true,
+                        // The current scene stays visible until the next one is ready, then they blend.
+                        showLoader: false,
                         effect: effect === 'none' ? 'none' : effect,
-                        speed: 1200,
+                        speed: 900,
                         rotation: true,
                         rotateTo: scene
                             ? toRadians(scene.initial_view)
@@ -376,24 +424,64 @@ onMounted(() => {
         instance.getPlugin<VirtualTourPlugin>(VirtualTourPlugin);
     const markers = instance.getPlugin<MarkersPlugin>(MarkersPlugin);
 
+    instance.addEventListener('panorama-loaded', ({ data }) => {
+        const loaded = data.panorama as
+            | string
+            | { baseUrl?: string; path?: string };
+        const url =
+            typeof loaded === 'string'
+                ? loaded
+                : (loaded.baseUrl ?? loaded.path);
+        const scene = scenes.value.find(
+            (item) => item.media.panorama_preview_url === url,
+        );
+
+        if (scene) {
+            labelSceneId.value = scene.id;
+        }
+    });
+
     virtualTour.value.addEventListener('node-changed', ({ node }) => {
         currentSceneId.value = node.id;
+        labelSceneId.value = node.id;
         emit('sceneChange', node.id);
+        warmNeighbours(node.id);
         void upgradePanorama(node.id);
         // A link tooltip shown while hovering can outlive the scene it belonged to.
         markers.hideAllTooltips();
     });
 
+    const hotspotOf = (marker: { data?: unknown }): TourHotspot | undefined =>
+        (marker.data as { hotspot?: TourHotspot } | undefined)?.hotspot;
+
+    const openPanel = (
+        marker: { domElement: Element },
+        hotspot: TourHotspot,
+    ) => {
+        popoverPin?.classList.remove('is-active');
+        popoverPin = marker.domElement.querySelector('.pin');
+        popoverPin?.classList.add('is-active');
+        popover.value = hotspot;
+    };
+
+    // Info panels open as soon as the pointer is on the pin and stay until closed.
+    markers.addEventListener('enter-marker', ({ marker }) => {
+        const hotspot = hotspotOf(marker);
+
+        if (hotspot?.type === 'info' && popover.value?.id !== hotspot.id) {
+            openPanel(marker, hotspot);
+        }
+    });
+
     markers.addEventListener('select-marker', ({ marker }) => {
-        const hotspot = (marker.data as { hotspot?: TourHotspot } | undefined)
-            ?.hotspot;
+        const hotspot = hotspotOf(marker);
 
         if (hotspot) {
             emit('hotspotSelect', hotspot, currentSceneId.value);
         }
 
-        if (hotspot && (hotspot.type === 'info' || hotspot.type === 'media')) {
-            popover.value = hotspot;
+        if (hotspot?.type === 'info' || hotspot?.type === 'media') {
+            openPanel(marker, hotspot);
         }
 
         if (hotspot?.type === 'link' && hotspot.external_url) {
@@ -406,6 +494,15 @@ onMounted(() => {
     });
 
     instance.addEventListener('ready', startAutoRotate, { once: true });
+    instance.addEventListener(
+        'ready',
+        () => {
+            if (currentSceneId.value) {
+                warmNeighbours(currentSceneId.value);
+            }
+        },
+        { once: true },
+    );
 
     for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
         container.value.addEventListener(type, stopAutoRotate, {
@@ -424,9 +521,35 @@ onBeforeUnmount(() => {
     <div class="relative size-full overflow-hidden bg-black">
         <div ref="container" class="size-full" />
 
+        <Transition name="scene-fade" mode="out-in">
+            <div
+                v-if="settings.show_scene_label && labelScene"
+                :key="labelScene.id"
+                class="scene-label pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2"
+            >
+                <span class="scene-label__name">{{ labelScene.title }}</span>
+                <span v-if="scenes.length > 1" class="scene-label__count"
+                    >{{ labelIndex + 1 }} / {{ scenes.length }}</span
+                >
+            </div>
+        </Transition>
+
+        <Transition name="scene-fade" mode="out-in">
+            <p
+                v-if="labelScene"
+                :key="labelScene.id"
+                class="scene-caption pointer-events-none absolute bottom-0 left-1/2 z-10 -translate-x-1/2"
+            >
+                {{ labelScene.title }}
+            </p>
+        </Transition>
+
         <div
             v-if="popover"
             class="hotspot-popover-backdrop"
+            :class="{
+                'hotspot-popover-backdrop--light': popover.type === 'info',
+            }"
             role="dialog"
             aria-modal="true"
             :aria-label="popover.title ?? 'Details'"

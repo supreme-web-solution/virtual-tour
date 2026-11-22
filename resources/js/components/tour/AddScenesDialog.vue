@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import {
     AlertTriangle,
     Check,
     Loader2,
     Orbit,
     Search,
+    Trash2,
     Upload,
 } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
@@ -22,6 +23,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import media from '@/routes/media';
 import type { AssetTypeOption, LibraryPanorama } from '@/types';
 
 const props = defineProps<{
@@ -41,6 +43,11 @@ const emit = defineEmits<{
 const open = defineModel<boolean>('open', { default: false });
 
 const selected = ref<string[]>([]);
+/** Manage mode: tiles are picked for deletion instead of for adding. */
+const managing = ref(false);
+const confirmingDelete = ref(false);
+const removed = ref<string[]>([]);
+const deleteForm = useForm<{ ids: string[] }>({ ids: [] });
 const uploadOpen = ref(false);
 const search = useMediaSearch(() => 'panorama');
 const searching = computed(() => search.query.value.trim() !== '');
@@ -48,7 +55,7 @@ const searching = computed(() => search.query.value.trim() !== '');
 // Panoramas from the tour's property first, then the rest of the library.
 // Searching looks through the whole library, not just the latest files.
 const sorted = computed<LibraryPanorama[]>(() =>
-    searching.value
+    (searching.value
         ? search.results.value.map((found) => ({
               ...found,
               from_tour_property: false,
@@ -56,11 +63,14 @@ const sorted = computed<LibraryPanorama[]>(() =>
         : [...props.panoramas].sort(
               (a, b) =>
                   Number(b.from_tour_property) - Number(a.from_tour_property),
-          ),
+          )
+    ).filter((panorama) => !removed.value.includes(panorama.id)),
 );
 
 watch(open, (isOpen) => {
     if (isOpen) {
+        managing.value = false;
+        removed.value = [];
         selected.value = [];
         search.query.value = '';
     }
@@ -72,7 +82,31 @@ watch(uploadOpen, (isOpen) => {
     }
 });
 
+function toggleManaging(): void {
+    managing.value = !managing.value;
+    selected.value = [];
+}
+
+function destroySelected(): void {
+    const ids = selected.value;
+
+    deleteForm.ids = ids;
+    deleteForm.delete(media.destroyMany.url(), {
+        preserveScroll: true,
+        onSuccess: () => {
+            removed.value = [...removed.value, ...ids];
+            selected.value = [];
+            confirmingDelete.value = false;
+            router.reload({ only: ['panoramas'] });
+        },
+    });
+}
+
 function toggle(id: string): void {
+    if (managing.value && props.usedMediaIds.includes(id)) {
+        return;
+    }
+
     selected.value = selected.value.includes(id)
         ? selected.value.filter((value) => value !== id)
         : [...selected.value, id];
@@ -95,18 +129,32 @@ function submit(): void {
                 </DialogDescription>
             </DialogHeader>
 
-            <div class="relative">
-                <Search
-                    class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                    v-model="search.query.value"
-                    type="search"
-                    placeholder="Search all panoramas by file name"
-                    class="pl-9"
-                    aria-label="Search panoramas"
-                />
+            <div class="flex items-center gap-2">
+                <div class="relative min-w-0 flex-1">
+                    <Search
+                        class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                        v-model="search.query.value"
+                        type="search"
+                        placeholder="Search all panoramas by file name"
+                        class="pl-9"
+                        aria-label="Search panoramas"
+                    />
+                </div>
+                <Button
+                    v-if="canUpload && sorted.length"
+                    :variant="managing ? 'secondary' : 'outline'"
+                    class="shrink-0"
+                    @click="toggleManaging"
+                >
+                    <Trash2 /> {{ managing ? 'Done' : 'Delete images' }}
+                </Button>
             </div>
+            <p v-if="managing" class="text-xs text-muted-foreground">
+                Select the images to delete from your library. Images already
+                used in a tour are kept.
+            </p>
 
             <div class="min-h-0 flex-1 overflow-y-auto">
                 <div
@@ -120,8 +168,13 @@ function submit(): void {
                         class="group relative overflow-hidden rounded-md border text-left"
                         :class="
                             selected.includes(panorama.id)
-                                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                ? managing
+                                    ? 'ring-2 ring-destructive ring-offset-2 ring-offset-background'
+                                    : 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                                 : ''
+                        "
+                        :disabled="
+                            managing && usedMediaIds.includes(panorama.id)
                         "
                         @click="toggle(panorama.id)"
                     >
@@ -151,12 +204,22 @@ function submit(): void {
                         </div>
                         <span
                             v-if="selected.includes(panorama.id)"
-                            class="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+                            class="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full text-xs font-medium"
+                            :class="
+                                managing
+                                    ? 'bg-destructive text-white'
+                                    : 'bg-primary text-primary-foreground'
+                            "
                         >
-                            {{ selected.indexOf(panorama.id) + 1 }}
+                            <Trash2 v-if="managing" class="size-3" />
+                            <template v-else>{{
+                                selected.indexOf(panorama.id) + 1
+                            }}</template>
                         </span>
                         <span
-                            v-else-if="!panorama.is_equirectangular"
+                            v-else-if="
+                                !managing && !panorama.is_equirectangular
+                            "
                             class="absolute top-1.5 right-1.5 rounded-full bg-amber-500 p-1 text-white"
                             title="Regular photo: converted to 360° when added (if AI 360° is set up)"
                         >
@@ -205,7 +268,25 @@ function submit(): void {
                     <Upload /> Upload panoramas
                 </Button>
                 <span v-else />
-                <Button :disabled="!selected.length || busy" @click="submit">
+                <Button
+                    v-if="managing"
+                    variant="destructive"
+                    :disabled="!selected.length"
+                    @click="confirmingDelete = true"
+                >
+                    <Trash2 />
+                    Delete
+                    {{
+                        selected.length
+                            ? `${selected.length} image${selected.length === 1 ? '' : 's'}`
+                            : 'images'
+                    }}
+                </Button>
+                <Button
+                    v-else
+                    :disabled="!selected.length || busy"
+                    @click="submit"
+                >
                     <Check />
                     Add
                     {{
@@ -213,6 +294,38 @@ function submit(): void {
                             ? `${selected.length} scene${selected.length === 1 ? '' : 's'}`
                             : 'scenes'
                     }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="confirmingDelete">
+        <DialogContent class="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle
+                    >Delete {{ selected.length }} image{{
+                        selected.length === 1 ? '' : 's'
+                    }}?</DialogTitle
+                >
+                <DialogDescription>
+                    This permanently deletes them from your library and cannot
+                    be undone. Images used in any tour are kept.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button variant="outline" @click="confirmingDelete = false"
+                    >Cancel</Button
+                >
+                <Button
+                    variant="destructive"
+                    :disabled="deleteForm.processing"
+                    @click="destroySelected"
+                >
+                    <Loader2
+                        v-if="deleteForm.processing"
+                        class="animate-spin"
+                    />
+                    Delete permanently
                 </Button>
             </DialogFooter>
         </DialogContent>

@@ -64,7 +64,8 @@ test('panoramas become scenes in the order they were chosen, with titles from fi
         ->assertCreated()
         ->assertJsonPath('tour.scenes.0.title', 'Kitchen')
         ->assertJsonPath('tour.scenes.1.title', 'Living Room 360')
-        ->assertJsonPath('tour.scenes.0.media.panorama_url', "https://storage.test/w8192/{$second->cloudinary_public_id}.jpg");
+        // 8000×4000 is 32 megapixels, over the 24 MP cap, so the full-size version is scaled to fit it.
+        ->assertJsonPath('tour.scenes.0.media.panorama_url', "https://storage.test/w6928/{$second->cloudinary_public_id}.jpg");
 });
 
 test('only panoramas from the same workspace can become scenes', function () {
@@ -246,7 +247,12 @@ test('tour settings save partially and embed domains are validated', function ()
         ->assertJsonPath('tour.visibility', 'public')
         ->assertJsonPath('tour.viewer_settings.auto_rotate', true)
         ->assertJsonPath('tour.viewer_settings.show_scene_gallery', true)
+        ->assertJsonPath('tour.viewer_settings.show_scene_label', true)
         ->assertJsonPath('tour.allowed_embed_domains', ['example.com', '*.agency.co.uk']);
+
+    $this->patchJson(route('tours.update', $this->tour), ['viewer_settings' => ['show_scene_label' => false]])
+        ->assertOk()
+        ->assertJsonPath('tour.viewer_settings.show_scene_label', false);
 
     $this->patchJson(route('tours.update', $this->tour), ['allowed_embed_domains' => ['https://example.com/page']])
         ->assertJsonValidationErrors('allowed_embed_domains.0');

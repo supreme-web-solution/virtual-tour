@@ -10,13 +10,24 @@ import type { PanoDataProvider } from '@photo-sphere-viewer/core';
  */
 export function flatPhotoPanoData(media: {
     is_equirectangular: boolean;
-}): PanoDataProvider | undefined {
-    if (media.is_equirectangular) {
-        return undefined;
-    }
-
+}): PanoDataProvider {
     return (image) => {
         const ratio = image.width / image.height;
+
+        // A 2:1 image is a whole sphere: say so outright, so the viewer never
+        // shrinks it to a partial panorama (black gaps) and ignores any
+        // partial-view metadata embedded in the file.
+        if (media.is_equirectangular || Math.abs(ratio - 2) <= 0.05) {
+            return {
+                fullWidth: image.width,
+                fullHeight: image.height,
+                croppedWidth: image.width,
+                croppedHeight: image.height,
+                croppedX: 0,
+                croppedY: 0,
+            };
+        }
+
         const horizontalDegrees = Math.min(
             340,
             Math.max(60, (90 * ratio) / (4 / 3)),

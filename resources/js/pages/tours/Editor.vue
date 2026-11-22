@@ -10,6 +10,7 @@ import {
     Share2,
     Clapperboard,
     Image as ImageIcon,
+    MapPin,
     LayoutPanelTop,
     MessageSquare,
     Music,
@@ -37,6 +38,7 @@ import TourSettingsPanel from '@/components/tour/TourSettingsPanel.vue';
 import BrandingPanel from '@/components/tour/BrandingPanel.vue';
 import ExtrasPanel from '@/components/tour/ExtrasPanel.vue';
 import FloorplanPanel from '@/components/tour/FloorplanPanel.vue';
+import MapPanel from '@/components/tour/MapPanel.vue';
 import type { HotspotInput } from '@/composables/useTourEditor';
 import { useTourEditor } from '@/composables/useTourEditor';
 import type { SphericalDegrees } from '@/lib/sphere';
@@ -98,7 +100,14 @@ const hotspotPanelRef = ref<InstanceType<typeof HotspotPanel> | null>(null);
 
 /** 'add' = placing a new hotspot; 'move' = repositioning the selected one. */
 const placementMode = ref<'add' | 'move' | null>(null);
-type RightTab = 'scene' | 'tour' | 'brand' | 'extras' | 'plan' | 'notes';
+type RightTab =
+    | 'scene'
+    | 'tour'
+    | 'brand'
+    | 'extras'
+    | 'plan'
+    | 'map'
+    | 'notes';
 const rightTab = ref<RightTab>('scene');
 const rightTabs: { key: RightTab; label: string; icon: typeof Settings }[] = [
     { key: 'scene', label: 'Scene', icon: ImageIcon },
@@ -106,6 +115,7 @@ const rightTabs: { key: RightTab; label: string; icon: typeof Settings }[] = [
     { key: 'brand', label: 'Brand', icon: Palette },
     { key: 'extras', label: 'Extras', icon: Music },
     { key: 'plan', label: 'Floor plan', icon: LayoutPanelTop },
+    { key: 'map', label: 'Map', icon: MapPin },
     { key: 'notes', label: 'Notes', icon: MessageSquare },
 ];
 /** The Maps tab holds both the floor plan and the scene map. */
@@ -195,11 +205,21 @@ function closeHotspotPanel(): void {
     placementMode.value = null;
 }
 
-function captureView(): void {
+const capturingView = ref(false);
+
+async function captureView(): Promise<void> {
     const view = viewerRef.value?.currentView();
 
-    if (view && currentScene.value) {
-        void editor.setInitialView(currentScene.value.id, view);
+    if (!view || !currentScene.value || capturingView.value) {
+        return;
+    }
+
+    capturingView.value = true;
+
+    try {
+        await editor.setInitialView(currentScene.value.id, view);
+    } finally {
+        capturingView.value = false;
     }
 }
 
@@ -414,6 +434,7 @@ async function confirmDeleteScene(): Promise<void> {
                                 :audio-library="library.audio"
                                 :can-edit="can.update"
                                 :placing="placementMode === 'add'"
+                                :capturing-view="capturingView"
                                 @update="
                                     editor.updateScene(currentScene.id, $event)
                                 "
@@ -456,6 +477,12 @@ async function confirmDeleteScene(): Promise<void> {
                         <CommentsPanel
                             v-else-if="rightTab === 'notes'"
                             :comments="comments"
+                        />
+                        <MapPanel
+                            v-else-if="rightTab === 'map'"
+                            :editor="editor"
+                            :can-edit="can.update"
+                            @update="onUpdateTour"
                         />
                         <template v-else>
                             <FloorplanPanel

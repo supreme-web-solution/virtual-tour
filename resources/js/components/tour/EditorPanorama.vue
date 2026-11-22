@@ -284,7 +284,7 @@ onMounted(() => {
     const instance = new Viewer({
         container: container.value,
         navbar: ['zoom', 'move', 'fullscreen'],
-        defaultZoomLvl: 50,
+        defaultZoomLvl: 0,
         touchmoveTwoFingers: false,
         mousewheelCtrlKey: false,
         plugins: [MarkersPlugin],

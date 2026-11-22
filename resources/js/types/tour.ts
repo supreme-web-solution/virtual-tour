@@ -72,6 +72,7 @@ export type ViewerSettings = {
     start_scene_id: string | null;
     show_scene_gallery: boolean;
     show_prev_next: boolean;
+    show_scene_label: boolean;
     auto_rotate: boolean;
     auto_rotate_speed: 'slow' | 'normal' | 'fast';
     transition: 'fade' | 'black' | 'none';
@@ -190,6 +191,7 @@ export type Branding = {
         button_label: string | null;
     };
     contact: {
+        enabled: boolean;
         name: string | null;
         email: string | null;
         phone: string | null;
@@ -203,7 +205,7 @@ export type PublicBranding = {
     accent_color: string;
     show_platform_branding: boolean;
     intro: Branding['intro'];
-    contact: Branding['contact'] | null;
+    contact: Omit<Branding['contact'], 'enabled'> | null;
 };
 
 export type TourAudioSettings = {

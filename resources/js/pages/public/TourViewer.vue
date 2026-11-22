@@ -5,11 +5,15 @@ import {
     Copy,
     FileText,
     Flag,
+    Globe,
+    Image as ImageIcon,
     Info,
     LayoutPanelTop,
     Loader2,
     Mail,
+    MapPin,
     Orbit,
+    Play,
     Share2,
     Volume2,
     VolumeX,
@@ -19,6 +23,7 @@ import { computed, reactive, ref } from 'vue';
 import PublicTourViewer from '@/components/tour/PublicTourViewer.vue';
 import TourFloorplanView from '@/components/tour/public/TourFloorplanView.vue';
 import TourLeadForm from '@/components/tour/public/TourLeadForm.vue';
+import TourMapView from '@/components/tour/public/TourMapView.vue';
 import { useTourAnalytics } from '@/composables/useTourAnalytics';
 import { useTourAudio } from '@/composables/useTourAudio';
 import type { TrackingIds } from '@/composables/useTrackingScripts';
@@ -38,7 +43,14 @@ const props = defineProps<{
 
 useTrackingScripts(props.tracking ?? null);
 
-type Panel = 'floorplan' | 'info' | 'lead' | 'share' | 'scene' | 'report';
+type Panel =
+    | 'floorplan'
+    | 'map'
+    | 'info'
+    | 'lead'
+    | 'share'
+    | 'scene'
+    | 'report';
 
 const page = usePage();
 const viewerRef = ref<InstanceType<typeof PublicTourViewer> | null>(null);
@@ -187,6 +199,9 @@ const toolbar = computed(() =>
                   label: 'Floor plan',
                   icon: LayoutPanelTop,
               }
+            : null,
+        props.tour.map
+            ? { key: 'map' as const, label: 'Map', icon: MapPin }
             : null,
         hasInfo.value
             ? { key: 'info' as const, label: 'About', icon: Info }
@@ -365,6 +380,12 @@ function startTour(withSound: boolean): void {
                     v-if="panel === 'floorplan'"
                     :floorplans="tour.floorplans"
                     :scenes="tour.scenes"
+                    :current-scene-id="currentSceneId"
+                    @go="goTo"
+                />
+                <TourMapView
+                    v-else-if="panel === 'map' && tour.map"
+                    :map="tour.map"
                     :current-scene-id="currentSceneId"
                     @go="goTo"
                 />
@@ -557,47 +578,88 @@ function startTour(withSound: boolean): void {
         >
 
         <!-- Intro screen -->
-        <div
-            v-if="introOpen"
-            class="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            :aria-label="branding.intro.title ?? tour.title"
-        >
-            <div class="max-w-md space-y-4 text-center">
-                <img
-                    v-if="branding.logo_url"
-                    :src="branding.logo_url"
-                    alt="Logo"
-                    class="mx-auto max-h-16 object-contain"
-                />
-                <h2 class="text-2xl font-semibold">
-                    {{ branding.intro.title ?? tour.title }}
-                </h2>
-                <p
-                    v-if="branding.intro.text"
-                    class="whitespace-pre-line text-white/85"
+        <Transition name="intro-fade">
+            <div
+                v-if="introOpen"
+                class="absolute inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-gradient-to-b from-black/30 via-black/40 to-black/55 p-6 backdrop-blur-[3px]"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="branding.intro.title ?? tour.title"
+            >
+                <div
+                    class="intro-card flex max-w-xl flex-col items-center gap-5 text-center"
                 >
-                    {{ branding.intro.text }}
-                </p>
-                <div class="flex flex-wrap justify-center gap-2 pt-2">
+                    <img
+                        v-if="branding.logo_url"
+                        :src="branding.logo_url"
+                        alt="Logo"
+                        class="max-h-14 object-contain"
+                    />
                     <button
                         type="button"
-                        class="rounded-md bg-[var(--tour-primary)] px-5 py-2.5 text-sm font-medium transition hover:opacity-90"
+                        class="intro-play group relative flex size-24 items-center justify-center rounded-full bg-[var(--tour-primary)] text-white shadow-2xl transition hover:scale-105 focus-visible:ring-4 focus-visible:ring-white/60 focus-visible:outline-none"
+                        :aria-label="
+                            branding.intro.button_label || 'Start tour'
+                        "
                         @click="startTour(false)"
                     >
-                        {{ branding.intro.button_label || 'Start tour' }}
+                        <Play class="ml-1 size-9 fill-current" />
                     </button>
-                    <button
-                        v-if="audio.hasAudio"
-                        type="button"
-                        class="flex items-center gap-2 rounded-md border border-white/30 px-4 py-2.5 text-sm transition hover:bg-white/10"
-                        @click="startTour(true)"
+                    <div class="space-y-3">
+                        <h2
+                            class="text-3xl leading-tight font-semibold tracking-tight sm:text-4xl"
+                        >
+                            {{ branding.intro.title ?? tour.title }}
+                        </h2>
+                        <p
+                            v-if="branding.intro.text"
+                            class="mx-auto max-w-lg text-base leading-relaxed whitespace-pre-line text-white/80"
+                        >
+                            {{ branding.intro.text }}
+                        </p>
+                    </div>
+                    <ul
+                        class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-sm text-white/65"
                     >
-                        <Volume2 class="size-4" /> Start with sound
-                    </button>
+                        <li class="flex items-center gap-1.5">
+                            <ImageIcon class="size-4" />
+                            {{ tour.scenes.length }}
+                            {{ tour.scenes.length === 1 ? 'scene' : 'scenes' }}
+                        </li>
+                        <li class="flex items-center gap-1.5">
+                            <Globe class="size-4" /> 360° virtual tour
+                        </li>
+                    </ul>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button
+                            type="button"
+                            class="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-900 transition hover:bg-white/90"
+                            @click="startTour(false)"
+                        >
+                            {{ branding.intro.button_label || 'Start tour' }}
+                        </button>
+                        <button
+                            v-if="audio.hasAudio"
+                            type="button"
+                            class="flex items-center gap-2 rounded-full border border-white/30 px-5 py-2.5 text-sm transition hover:bg-white/10"
+                            @click="startTour(true)"
+                        >
+                            <Volume2 class="size-4" /> Start with sound
+                        </button>
+                    </div>
+                    <a
+                        v-if="!unbranded && branding.show_platform_branding"
+                        :href="page.props.appUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="text-xs text-white/50 transition hover:text-white/80"
+                        >Powered by
+                        <span class="font-semibold text-white/75">{{
+                            page.props.name
+                        }}</span></a
+                    >
                 </div>
             </div>
-        </div>
+        </Transition>
     </div>
 </template>
