@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Palette as HeaderIcon } from '@lucide/vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { Switch } from '@/components/ui/switch';
 import {
     Check,
@@ -8,7 +8,6 @@ import {
     Clock,
     Copy,
     Globe,
-    Lock,
     Store,
     RefreshCw,
     TriangleAlert,
@@ -27,7 +26,6 @@ import {
     store as storeDomain,
     verify as verifyDomain,
 } from '@/routes/brand/domain';
-import { index as billingIndex } from '@/routes/billing';
 
 type DomainInfo = {
     host: string;
@@ -350,7 +348,7 @@ const records = computed(() =>
                     <InputError :message="errors.logo_asset_id" />
                 </div>
 
-                <div class="space-y-3 border-t pt-4">
+                <div v-if="features.tracking" class="space-y-3 border-t pt-4">
                     <div>
                         <h3 class="text-sm font-medium">Tracking</h3>
                         <p class="text-sm text-muted-foreground">
@@ -383,16 +381,6 @@ const records = computed(() =>
                             <InputError :message="errors.gtm_id" />
                         </div>
                     </div>
-                    <p
-                        v-if="!features.tracking"
-                        class="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    >
-                        <Lock class="size-3.5" /> Your plan doesn't include
-                        Google Analytics / Tag Manager.
-                        <Link :href="billingIndex()" class="underline"
-                            >See plans</Link
-                        >
-                    </p>
                 </div>
 
                 <Button
@@ -429,19 +417,6 @@ const records = computed(() =>
                             Powered by {{ platformName }}
                         </p>
                     </div>
-                </div>
-                <div
-                    v-if="!features.white_label"
-                    class="flex gap-2 rounded-md bg-muted/60 p-3 text-xs"
-                >
-                    <Lock class="mt-0.5 size-3.5 shrink-0" />
-                    <span>
-                        Your plan shows the platform name on public pages.
-                        <Link :href="billingIndex()" class="underline"
-                            >White-label plans</Link
-                        >
-                        show only your brand.
-                    </span>
                 </div>
             </aside>
         </section>
@@ -496,7 +471,10 @@ const records = computed(() =>
             </div>
         </section>
 
-        <section class="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
+        <section
+            v-if="features.custom_domain || domain"
+            class="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
+        >
             <div class="flex flex-wrap items-start justify-between gap-2">
                 <div>
                     <h2 class="flex items-center gap-2 font-medium">
@@ -512,21 +490,8 @@ const records = computed(() =>
                 </div>
             </div>
 
-            <div
-                v-if="!features.custom_domain && !domain"
-                class="flex gap-2 rounded-md bg-muted/60 p-3 text-sm"
-            >
-                <Lock class="mt-0.5 size-4 shrink-0" />
-                <span>
-                    Custom domains are not included in your plan.
-                    <Link :href="billingIndex()" class="underline"
-                        >See plans</Link
-                    >.
-                </span>
-            </div>
-
             <form
-                v-else-if="!domain"
+                v-if="!domain"
                 class="flex flex-col gap-2 sm:flex-row"
                 @submit.prevent="connect"
             >

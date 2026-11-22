@@ -143,3 +143,9 @@ test('the MCP endpoint lists tools and runs one', function () {
     $this->withToken($token)->postJson('/api/mcp', ['jsonrpc' => '2.0', 'method' => 'notifications/initialized'])->assertStatus(202);
     $this->withToken($token)->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'nope'])->assertJsonPath('error.code', -32601);
 });
+
+test('a plan without API access has no token page at all', function () {
+    apiPlan(false);
+
+    $this->actingAs($this->owner)->get(route('api-tokens.index'))->assertNotFound();
+});

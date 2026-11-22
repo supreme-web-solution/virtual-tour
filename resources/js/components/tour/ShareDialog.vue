@@ -170,7 +170,7 @@ async function copyText(kind: 'link' | 'embed' | 'mls'): Promise<void> {
                 </div>
             </div>
 
-            <div class="grid gap-2">
+            <div v-if="canMls" class="grid gap-2">
                 <Label for="mls-link">MLS-ready link</Label>
                 <template v-if="canMls">
                     <div class="flex gap-2">
@@ -200,10 +200,6 @@ async function copyText(kind: 'link' | 'embed' | 'mls'): Promise<void> {
                         them.
                     </p>
                 </template>
-                <p v-else class="text-xs text-muted-foreground">
-                    Included with white-label plans: a link with no logo,
-                    contact details or branding, for MLS listings.
-                </p>
             </div>
 
             <div class="grid gap-2">

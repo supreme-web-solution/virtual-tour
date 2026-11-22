@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BarChart3 as HeaderIcon } from '@lucide/vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { BarChart3, Info, Lock } from '@lucide/vue';
+import { Head, router } from '@inertiajs/vue3';
+import { BarChart3, Info } from '@lucide/vue';
 import { computed, reactive, watch } from 'vue';
 import AdvancedReport from '@/components/analytics/AdvancedReport.vue';
 import VideoMetrics from '@/components/analytics/VideoMetrics.vue';
@@ -9,10 +9,8 @@ import EnquiryInbox from '@/components/analytics/EnquiryInbox.vue';
 import type { Lead } from '@/components/analytics/EnquiryInbox.vue';
 import NativeSelect from '@/components/NativeSelect.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import { Button } from '@/components/ui/button';
 import { formatDate, timeAgo } from '@/lib/format';
 import analytics from '@/routes/analytics';
-import billing from '@/routes/billing';
 import type {
     AdvancedReport as AdvancedReportData,
     Paginated,
@@ -75,7 +73,6 @@ defineOptions({
     },
 });
 
-const page = usePage();
 const filters = reactive({ ...props.filters });
 
 watch(
@@ -295,33 +292,6 @@ function share(rows: Breakdown, total: number): number {
                 :filters="filters"
                 :can-export-leads="can.exportLeads"
             />
-            <section
-                v-else-if="!features.advanced"
-                class="flex flex-col items-start gap-3 rounded-lg border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div class="flex gap-3">
-                    <Lock
-                        class="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                    />
-                    <div>
-                        <p class="text-sm font-medium">Advanced analytics</p>
-                        <p class="text-sm text-muted-foreground">
-                            Compare periods, see each tour's conversion rate,
-                            where visitors drop off, which hotspots get clicked
-                            and when people visit, plus 12-month history and CSV
-                            export.
-                        </p>
-                    </div>
-                </div>
-                <Button
-                    v-if="page.props.workspace?.can?.manage"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                >
-                    <Link :href="billing.index()">See plans</Link>
-                </Button>
-            </section>
 
             <p class="flex gap-2 text-xs text-muted-foreground">
                 <Info class="mt-0.5 size-3.5 shrink-0" />

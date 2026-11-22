@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { Check, Minus } from '@lucide/vue';
+import { computed } from 'vue';
 import { formatEntitlement, usagePercent } from '@/lib/billing';
 import type { EntitlementSummary } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     summary: EntitlementSummary;
+    /** Customers see only what their plan includes; admins see everything. */
+    onlyIncluded?: boolean;
 }>();
+
+const features = computed(() =>
+    props.onlyIncluded
+        ? props.summary.features.filter((feature) => feature.included)
+        : props.summary.features,
+);
 
 function tone(percent: number | null): string {
     if (percent === null) {
@@ -60,7 +69,7 @@ function tone(percent: number | null): string {
 
         <ul class="grid gap-1.5 border-t pt-4 text-sm sm:grid-cols-2">
             <li
-                v-for="feature in summary.features"
+                v-for="feature in features"
                 :key="feature.key"
                 class="flex items-center gap-2"
                 :class="feature.included ? '' : 'text-muted-foreground'"

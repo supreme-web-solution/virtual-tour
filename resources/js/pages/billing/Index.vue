@@ -2,7 +2,7 @@
 import { formatCredits } from '@/lib/credits';
 import { CreditCard as HeaderIcon } from '@lucide/vue';
 import { Head } from '@inertiajs/vue3';
-import { Check, Minus } from '@lucide/vue';
+import { Check } from '@lucide/vue';
 import UsageMeters from '@/components/billing/UsageMeters.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { formatEntitlement, formatPlanPrice } from '@/lib/billing';
@@ -52,6 +52,13 @@ defineOptions({
     },
 });
 
+/** Features a plan does not include are left out, so nobody asks for what is not on offer. */
+function includedLimits<T extends { value: number | boolean | null }>(
+    limits: T[],
+): T[] {
+    return limits.filter((limit) => limit.value !== false);
+}
+
 /** "Videos per month" reads as "videos per month" after a number; "AI credits" keeps its acronym. */
 function lowerFirst(label: string): string {
     return /^[A-Z][a-z]/.test(label)
@@ -100,7 +107,7 @@ function lowerFirst(label: string): string {
                 >
                     Your payment is past due. Contact us to keep your plan.
                 </p>
-                <UsageMeters :summary="summary" />
+                <UsageMeters :summary="summary" only-included />
             </section>
 
             <section class="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
@@ -191,21 +198,11 @@ function lowerFirst(label: string): string {
                     </div>
                     <ul class="space-y-1.5 text-sm">
                         <li
-                            v-for="limit in plan.limits"
+                            v-for="limit in includedLimits(plan.limits)"
                             :key="limit.key"
                             class="flex items-start gap-2"
-                            :class="
-                                limit.value === false
-                                    ? 'text-muted-foreground'
-                                    : ''
-                            "
                         >
-                            <Minus
-                                v-if="limit.value === false"
-                                class="mt-0.5 size-4 shrink-0"
-                            />
                             <Check
-                                v-else
                                 class="mt-0.5 size-4 shrink-0 text-emerald-600"
                             />
                             <span v-if="typeof limit.value === 'boolean'">{{

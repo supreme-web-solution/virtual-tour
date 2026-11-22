@@ -26,8 +26,10 @@ class ApiTokenController extends Controller
         $user = $this->user($request);
         $workspaceId = (int) $user->current_workspace_id;
 
+        // A plan without API access has no trace of the page.
+        abort_unless($this->entitlements->allows($workspaceId, Entitlement::ApiAccess), 404);
+
         return Inertia::render('settings/ApiTokens', [
-            'allowed' => $this->entitlements->allows($workspaceId, Entitlement::ApiAccess),
             'canManage' => $user->roleIn($workspaceId)?->canManage() ?? false,
             'tokens' => $this->tokens($user)->map(fn (PersonalAccessToken $token): array => [
                 'id' => $token->id,

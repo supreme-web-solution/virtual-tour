@@ -57,30 +57,42 @@ const homeNavItems: NavItem[] = [
 ];
 
 // The work: tours, then everything made from them.
-const createNavItems: NavItem[] = [
+const createNavItems = computed<NavItem[]>(() => [
     { title: 'Tours', href: tours.index(), icon: Orbit },
-    { title: 'Videos', href: videos.index(), icon: Clapperboard },
+    ...(page.props.workspace?.plan.features.video_studio
+        ? [{ title: 'Videos', href: videos.index(), icon: Clapperboard }]
+        : []),
     { title: 'Properties', href: properties.index(), icon: Building2 },
     { title: 'Media library', href: media.index(), icon: Images },
-];
+]);
 
 const growNavItems: NavItem[] = [
     { title: 'Analytics', href: analytics.index(), icon: BarChart3 },
 ];
 
+const hasBrandFeatures = computed(() => {
+    const features = page.props.workspace?.plan.features;
+
+    return Boolean(
+        features?.remove_branding ||
+        features?.custom_domain ||
+        features?.tracking_scripts,
+    );
+});
+
 // Workspace settings; billing and branding only for owners and admins.
 const workspaceNavItems = computed<NavItem[]>(() => [
     { title: 'Team', href: team.index(), icon: Users },
+    // Brand & domain only exists for plans with white-label, a custom domain or tracking.
+    ...(page.props.workspace?.can?.manage && hasBrandFeatures.value
+        ? [{ title: 'Brand & domain', href: brand.index(), icon: Palette }]
+        : []),
     ...(page.props.workspace?.can?.manage
-        ? [
-              { title: 'Brand & domain', href: brand.index(), icon: Palette },
-              {
-                  title: 'Plan & usage',
-                  href: billing.index(),
-                  icon: CreditCard,
-              },
-              { title: 'API access', href: apiTokens.index(), icon: KeyRound },
-          ]
+        ? [{ title: 'Plan & usage', href: billing.index(), icon: CreditCard }]
+        : []),
+    ...(page.props.workspace?.can?.manage &&
+    page.props.workspace?.plan.features.api_access
+        ? [{ title: 'API access', href: apiTokens.index(), icon: KeyRound }]
         : []),
 ]);
 

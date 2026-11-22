@@ -216,6 +216,7 @@ function saveText(
                 </label>
             </div>
             <label
+                v-if="canRemoveBadge"
                 class="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
                 ><span>Show “Powered by” badge</span
                 ><Switch
@@ -227,9 +228,6 @@ function saveText(
                         save({ show_platform_branding: $event === true })
                     "
             /></label>
-            <p v-if="!canRemoveBadge" class="text-xs text-muted-foreground">
-                Removing the badge needs a plan that includes it.
-            </p>
         </PanelSection>
 
         <PanelSection title="Intro screen" :icon="PanelTop" tone="sky">
