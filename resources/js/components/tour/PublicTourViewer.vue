@@ -237,12 +237,29 @@ async function upgradePanorama(sceneId: string): Promise<void> {
 
     const full = fullUrl(scene);
 
-    await new Promise<void>((resolve) => {
-        const image = new Image();
-        image.onload = () => resolve();
-        image.onerror = () => resolve();
-        image.src = full;
-    });
+    // A version Cloudinary is still building can fail once and work on the next
+    // try, so retry before giving up and keeping the preview.
+    let loaded = false;
+
+    for (let attempt = 0; attempt < 4 && !loaded; attempt++) {
+        if (attempt > 0) {
+            await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        }
+
+        loaded = await new Promise<boolean>((resolve) => {
+            const image = new Image();
+            image.onload = () => resolve(true);
+            image.onerror = () => resolve(false);
+            image.src =
+                attempt === 0
+                    ? full
+                    : `${full}${full.includes('?') ? '&' : '?'}retry=${attempt}`;
+        });
+    }
+
+    if (!loaded) {
+        return;
+    }
 
     if (currentSceneId.value !== sceneId || viewer.value !== instance) {
         return;

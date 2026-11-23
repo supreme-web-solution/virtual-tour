@@ -451,7 +451,7 @@ class TourPresenter
      * more than about 25 megapixels, so a very large image is capped by its
      * pixel count rather than by width alone.
      */
-    protected function desktopWidth(MediaAsset $asset): int
+    public function desktopWidth(MediaAsset $asset): int
     {
         if (! $asset->width || ! $asset->height) {
             return self::DESKTOP_WIDTH;

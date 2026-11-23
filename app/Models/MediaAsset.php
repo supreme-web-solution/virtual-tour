@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AssetSource;
 use App\Enums\AssetType;
+use App\Jobs\Media\WarmPanoramaVersions;
 use App\Models\Concerns\HasPublicUlid;
 use App\Services\Panorama\PanoramaValidationService;
 use Database\Factories\MediaAssetFactory;
@@ -49,6 +50,15 @@ class MediaAsset extends Model
 {
     /** @use HasFactory<MediaAssetFactory> */
     use HasFactory, HasPublicUlid;
+
+    protected static function booted(): void
+    {
+        static::created(function (MediaAsset $asset): void {
+            if (filled(config('services.cloudinary.cloud_name')) && $asset->isImage() && $asset->isEquirectangular()) {
+                WarmPanoramaVersions::dispatch($asset->id)->afterCommit();
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
