@@ -87,7 +87,7 @@ class PanoramaService
      */
     public function convertFlatImages(Collection $assets, VirtualTour $tour, User $user): Collection
     {
-        $flat = $assets->reject(fn (MediaAsset $asset): bool => (bool) ($asset->metadata['panorama']['is_equirectangular'] ?? false))->values();
+        $flat = $assets->reject(fn (MediaAsset $asset): bool => $asset->isEquirectangular())->values();
 
         if ($flat->isEmpty() || ! $this->provider->isConfigured()) {
             return new Collection;

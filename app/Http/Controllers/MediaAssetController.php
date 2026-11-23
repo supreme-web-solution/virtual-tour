@@ -205,7 +205,7 @@ class MediaAssetController extends Controller
                 'thumbnail_url' => $asset->thumbnail_url,
                 'width' => $asset->width,
                 'height' => $asset->height,
-                'is_equirectangular' => (bool) ($asset->metadata['panorama']['is_equirectangular'] ?? false),
+                'is_equirectangular' => $asset->isEquirectangular(),
                 'property' => $asset->property?->name,
             ])->values(),
             'has_more' => $page->hasMorePages(),

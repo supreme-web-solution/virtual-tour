@@ -75,7 +75,7 @@ test('only large, real, placed panoramas are eligible', function () {
         ->and($publisher->problem(realScene(['source_type' => AssetSource::Generated])->load('mediaAsset')))->toContain('own uploaded')
         ->and($publisher->problem(realScene(['metadata' => ['panorama' => ['is_equirectangular' => true], 'ai' => ['synthetic' => true]]])->load('mediaAsset')))->toContain('own uploaded')
         ->and($publisher->problem(realScene(['width' => 2000])->load('mediaAsset')))->toContain('Too small')
-        ->and($publisher->problem(realScene(['metadata' => []])->load('mediaAsset')))->toContain('360')
+        ->and($publisher->problem(realScene(['metadata' => [], 'height' => 3000])->load('mediaAsset')))->toContain('360')
         ->and($publisher->problem(realScene([], ['latitude' => null])->load('mediaAsset')))->toContain('map');
 });
 

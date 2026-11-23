@@ -421,7 +421,7 @@ class TourPresenter
             'thumbnail_url' => $asset->thumbnail_url,
             'width' => $asset->width,
             'height' => $asset->height,
-            'is_equirectangular' => (bool) ($asset->metadata['panorama']['is_equirectangular'] ?? false),
+            'is_equirectangular' => $asset->isEquirectangular(),
             'panorama_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, $this->desktopWidth($asset)),
             'panorama_mobile_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, self::MOBILE_WIDTH),
             'panorama_preview_url' => $this->storage->scaledImageUrl($asset->cloudinary_public_id, self::PREVIEW_WIDTH),
@@ -473,7 +473,7 @@ class TourPresenter
         $width = (int) $asset->width;
         $height = (int) $asset->height;
 
-        if (! ($asset->metadata['panorama']['is_equirectangular'] ?? false) || $width <= self::DESKTOP_WIDTH || $height < 1) {
+        if (! $asset->isEquirectangular() || $width <= self::DESKTOP_WIDTH || $height < 1) {
             return null;
         }
 

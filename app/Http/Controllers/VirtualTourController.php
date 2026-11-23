@@ -199,7 +199,7 @@ class VirtualTourController extends Controller
                 'thumbnail_url' => $asset->thumbnail_url,
                 'width' => $asset->width,
                 'height' => $asset->height,
-                'is_equirectangular' => (bool) ($asset->metadata['panorama']['is_equirectangular'] ?? false),
+                'is_equirectangular' => $asset->isEquirectangular(),
                 'property' => $asset->property?->name,
                 'from_tour_property' => $tour->property_id !== null && $asset->property_id === $tour->property_id,
             ])

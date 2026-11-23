@@ -294,19 +294,61 @@ const rotating = ref(false);
 const speed = ref<RotateSpeed>(settings.value.auto_rotate_speed ?? 'normal');
 let rotationFrame: number | null = null;
 
-function stopAutoRotate(): void {
+let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+let pointerHeld = false;
+
+function haltFrame(): void {
     if (rotationFrame !== null) {
         cancelAnimationFrame(rotationFrame);
         rotationFrame = null;
+    }
+}
+
+function stopAutoRotate(): void {
+    haltFrame();
+
+    if (resumeTimer !== null) {
+        clearTimeout(resumeTimer);
+        resumeTimer = null;
     }
 
     rotating.value = false;
 }
 
+/**
+ * A visitor looking around only pauses rotation: it carries on from where they
+ * left the view once they let go. Only the pause button stops it for good.
+ */
+function pauseWhileInteracting(): void {
+    if (!rotating.value) {
+        return;
+    }
+
+    haltFrame();
+
+    if (resumeTimer !== null) {
+        clearTimeout(resumeTimer);
+        resumeTimer = null;
+    }
+
+    if (!pointerHeld) {
+        resumeTimer = setTimeout(() => {
+            resumeTimer = null;
+
+            if (rotating.value && rotationFrame === null) {
+                runRotation();
+            }
+        }, 1500);
+    }
+}
+
 function beginRotation(): void {
     stopAutoRotate();
     rotating.value = true;
+    runRotation();
+}
 
+function runRotation(): void {
     const tick = (): void => {
         const instance = viewer.value;
 
@@ -504,14 +546,35 @@ onMounted(() => {
         { once: true },
     );
 
-    for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
-        container.value.addEventListener(type, stopAutoRotate, {
+    container.value.addEventListener(
+        'pointerdown',
+        () => {
+            pointerHeld = true;
+            pauseWhileInteracting();
+        },
+        { passive: true },
+    );
+
+    for (const type of ['wheel', 'keydown']) {
+        container.value.addEventListener(type, pauseWhileInteracting, {
             passive: true,
         });
     }
+
+    window.addEventListener('pointerup', onPointerRelease);
+    window.addEventListener('pointercancel', onPointerRelease);
 });
 
+function onPointerRelease(): void {
+    if (pointerHeld) {
+        pointerHeld = false;
+        pauseWhileInteracting();
+    }
+}
+
 onBeforeUnmount(() => {
+    window.removeEventListener('pointerup', onPointerRelease);
+    window.removeEventListener('pointercancel', onPointerRelease);
     stopAutoRotate();
     viewer.value?.destroy();
 });

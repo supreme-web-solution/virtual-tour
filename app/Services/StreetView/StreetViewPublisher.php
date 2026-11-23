@@ -45,7 +45,7 @@ class StreetViewPublisher
         $asset = $scene->mediaAsset;
 
         $problem = match (true) {
-            ! ($asset->metadata['panorama']['is_equirectangular'] ?? false) => __('Not a 360° panorama.'),
+            ! $asset->isEquirectangular() => __('Not a 360° panorama.'),
             $asset->source_type !== AssetSource::Upload || ($asset->metadata['ai']['synthetic'] ?? false) => __('Only your own uploaded photos can go on Street View, not AI-made or imported images.'),
             (int) $asset->width < (int) config('services.google.min_panorama_width') => __('Too small: Street View needs at least :width px wide.', ['width' => config('services.google.min_panorama_width')]),
             $scene->latitude === null || $scene->longitude === null => __('Place this scene on the map first.'),

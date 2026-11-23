@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AssetSource;
 use App\Enums\AssetType;
 use App\Models\Concerns\HasPublicUlid;
+use App\Services\Panorama\PanoramaValidationService;
 use Database\Factories\MediaAssetFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -115,5 +116,20 @@ class MediaAsset extends Model
     public function isImage(): bool
     {
         return $this->cloudinary_resource_type === 'image';
+    }
+
+    /**
+     * Whether this is a full 360° equirectangular panorama. Trusts the stored
+     * check when there is one, otherwise judges by the 2:1 shape, so a
+     * panorama uploaded as a plain photo is recognised too.
+     */
+    public function isEquirectangular(): bool
+    {
+        if (isset($this->metadata['panorama']['is_equirectangular'])) {
+            return (bool) $this->metadata['panorama']['is_equirectangular'];
+        }
+
+        return (bool) app(PanoramaValidationService::class)
+            ->inspect($this->width, $this->height)['is_equirectangular'];
     }
 }

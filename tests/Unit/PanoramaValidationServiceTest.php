@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MediaAsset;
 use App\Services\Panorama\PanoramaValidationService;
 
 test('a 2:1 image of good resolution is a clean equirectangular panorama', function () {
@@ -33,4 +34,14 @@ test('low and very high resolutions produce warnings', function () {
 test('missing dimensions are reported', function () {
     expect((new PanoramaValidationService)->inspect(null, 1000))
         ->toMatchArray(['is_equirectangular' => false, 'ratio' => null]);
+});
+
+test('a 2:1 image counts as a panorama even when it was saved as a plain photo', function () {
+    $photo = new MediaAsset(['width' => 8192, 'height' => 4096, 'metadata' => null]);
+    $flat = new MediaAsset(['width' => 4000, 'height' => 3000, 'metadata' => null]);
+    $checked = new MediaAsset(['width' => 8192, 'height' => 4096, 'metadata' => ['panorama' => ['is_equirectangular' => false]]]);
+
+    expect($photo->isEquirectangular())->toBeTrue()
+        ->and($flat->isEquirectangular())->toBeFalse()
+        ->and($checked->isEquirectangular())->toBeFalse();
 });
